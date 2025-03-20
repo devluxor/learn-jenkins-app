@@ -38,4 +38,11 @@ pipeline {
             }
       }
     }
+
+    post {
+        always {
+            echo 'Publishing JUnit test results...'
+            junit 'test-results/junit.xml'
+        }
+    }
 }
