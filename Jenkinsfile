@@ -140,56 +140,62 @@ pipeline {
             }
         }
 
-       stage('Deploy production') {
-            agent {
-                docker {
-                    image 'node:18-alpine'
-                    reuseNode true
-                }
-            }
-            steps {
-                sh '''
-                  npm install netlify-cli
-                  node_modules/.bin/netlify --version
-                  echo "Deploying to Netlify for production... Site ID: $NETLIFY_SITE_ID"
-                  node_modules/.bin/netlify status
-                  node_modules/.bin/netlify deploy --dir=build --prod
-                '''
-            }
-        }
+      //  stage('Deploy production') {
+      //       agent {
+      //           docker {
+      //               image 'node:18-alpine'
+      //               reuseNode true
+      //           }
+      //       }
+      //       steps {
+      //           sh '''
+      //             npm install netlify-cli
+      //             node_modules/.bin/netlify --version
+      //             echo "Deploying to Netlify for production... Site ID: $NETLIFY_SITE_ID"
+      //             node_modules/.bin/netlify status
+      //             node_modules/.bin/netlify deploy --dir=build --prod
+      //           '''
+      //       }
+      //   }
 
-      // stage('Prod E2E Test') {
-      //     agent {
-      //         docker {
-      //             image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-      //             reuseNode true
-      //         }
-      //     }
+      stage('Deploy to prod + E2E Test') {
+          agent {
+              docker {
+                  image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                  reuseNode true
+              }
+          }
 
-      //     environment {
-      //       CI_ENVIRONMENT_URL = 'https://startling-rabanadas-2b55d4.netlify.app'
-      //     }   
+          environment {
+            CI_ENVIRONMENT_URL = 'https://startling-rabanadas-2b55d4.netlify.app'
+          }   
 
-      //     steps {
-      //         sh '''
-      //           npx playwright test --reporter=html
-      //         '''
-      //     }
-      //     post {
-      //         always {
-      //             publishHTML([
-      //               allowMissing: false, 
-      //               alwaysLinkToLastBuild: false, 
-      //               icon: '', 
-      //               keepAll: false, 
-      //               reportDir: 'playwright-report', 
-      //               reportFiles: 'index.html', 
-      //               reportName: 'Playwright E2E Report', 
-      //               reportTitles: '', 
-      //               useWrapperFileDirectly: true
-      //             ])
-      //         }
-      //     }
-      // }
+          steps {
+              sh '''
+                npm install netlify-cli
+                node_modules/.bin/netlify --version
+                echo "Deploying to Netlify for production... Site ID: $NETLIFY_SITE_ID"
+                node_modules/.bin/netlify status
+                node_modules/.bin/netlify deploy --dir=build --prod
+                
+                npx playwright test --reporter=html
+              '''
+          }
+          post {
+              always {
+                  publishHTML([
+                    allowMissing: false, 
+                    alwaysLinkToLastBuild: false, 
+                    icon: '', 
+                    keepAll: false, 
+                    reportDir: 'playwright-report', 
+                    reportFiles: 'index.html', 
+                    reportName: 'Playwright E2E Report', 
+                    reportTitles: '', 
+                    useWrapperFileDirectly: true
+                  ])
+              }
+          }
+      }
     }
 }
