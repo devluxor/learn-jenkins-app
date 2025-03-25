@@ -4,28 +4,27 @@ pipeline {
     environment {
         NETLIFY_SITE_ID = '301b95ca-3e2e-4469-8426-54dfd977273c'
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
-        CI_ENVIRONMENT_URL = 'https://startling-rabanadas-2b55d4.netlify.app/'
     }
 
     stages {
-        // stage('Build') {
-        //     agent {
-        //         docker {
-        //             image 'node:18-alpine'
-        //             reuseNode true
-        //         }
-        //     }
-        //     steps {
-        //         sh '''
-        //             ls -la
-        //             node --version
-        //             npm --version
-        //             npm ci
-        //             npm run build
-        //             ls -la
-        //         '''
-        //     }
-        // }
+        stage('Build') {
+            agent {
+                docker {
+                    image 'node:18-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh '''
+                    ls -la
+                    node --version
+                    npm --version
+                    npm ci
+                    npm run build
+                    ls -la
+                '''
+            }
+        }
 
       // stage ('Test') {
       //   parallel {
@@ -96,6 +95,14 @@ pipeline {
             }
         }
 
+        stage('Approval') {
+            timeout(time: 60, unit: 'MINUTES') {
+              steps {
+                  input message: 'Ready to deploy for production?', ok: 'Yes, I\'m ready'
+              }
+            }
+        }
+
        stage('Deploy production') {
             agent {
                 docker {
@@ -114,38 +121,38 @@ pipeline {
             }
         }
 
-      stage('Prod E2E Test') {
-          agent {
-              docker {
-                  image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-                  reuseNode true
-              }
-          }
+      // stage('Prod E2E Test') {
+      //     agent {
+      //         docker {
+      //             image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+      //             reuseNode true
+      //         }
+      //     }
 
-          environment {
-            CI_ENVIRONMENT_URL = 'https://startling-rabanadas-2b55d4.netlify.app'
-          }   
+      //     environment {
+      //       CI_ENVIRONMENT_URL = 'https://startling-rabanadas-2b55d4.netlify.app'
+      //     }   
 
-          steps {
-              sh '''
-                npx playwright test --reporter=html
-              '''
-          }
-          post {
-              always {
-                  publishHTML([
-                    allowMissing: false, 
-                    alwaysLinkToLastBuild: false, 
-                    icon: '', 
-                    keepAll: false, 
-                    reportDir: 'playwright-report', 
-                    reportFiles: 'index.html', 
-                    reportName: 'Playwright E2E Report', 
-                    reportTitles: '', 
-                    useWrapperFileDirectly: true
-                  ])
-              }
-          }
-      }
+      //     steps {
+      //         sh '''
+      //           npx playwright test --reporter=html
+      //         '''
+      //     }
+      //     post {
+      //         always {
+      //             publishHTML([
+      //               allowMissing: false, 
+      //               alwaysLinkToLastBuild: false, 
+      //               icon: '', 
+      //               keepAll: false, 
+      //               reportDir: 'playwright-report', 
+      //               reportFiles: 'index.html', 
+      //               reportName: 'Playwright E2E Report', 
+      //               reportTitles: '', 
+      //               useWrapperFileDirectly: true
+      //             ])
+      //         }
+      //     }
+      // }
     }
 }
