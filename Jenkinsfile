@@ -22,6 +22,9 @@ pipeline {
             environment {
               // AWS_S3_BUCKET = 'learn-jenkins-123456'
               AWS_DEFAULT_REGION = 'eu-west-1'
+              AWS_ECS_CLUSTER = 'learn-jenkins-app-cluster-prod'
+              AWS_ECS_SERVICE = 'LearnJenkinsApp-Service-Prod'
+              AWS_ECS_TASK_DEFINITION = 'LearnJenkinsApp-TaskDefinition-Prod'
             }
 
             steps {
@@ -35,9 +38,9 @@ pipeline {
 
                       aws ecs register-task-definition --cli-input-json file://aws/task-definition-prod.json
      
-                      aws ecs update-service --cluster learn-jenkins-app-cluster-prod --service LearnJenkinsApp-Service-Prod --task-definition LearnJenkinsApp-TaskDefinition-Prod:$LATEST_TD_REVISION
+                      aws ecs update-service --cluster $AWS_ECS_CLUSTER --service $AWS_ECS_SERVICE --task-definition $AWS_ECS_TASK_DEFINITION:$LATEST_TD_REVISION
                       
-                      aws ecs wait services-stable --cluster learn-jenkins-app-cluster-prod --services LearnJenkinsApp-Service-Prod
+                      aws ecs wait services-stable --cluster $AWS_ECS_CLUSTER --services $AWS_ECS_SERVICE
                     '''
                 }
             }
