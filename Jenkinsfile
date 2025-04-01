@@ -10,42 +10,6 @@ pipeline {
 
     stages {
 
-        stage('Deploy to AWS') {
-            agent {
-                docker {
-                    image 'amazon/aws-cli'
-                    reuseNode true
-                    args "-u root --entrypoint=''"
-                }
-            }
-
-            environment {
-              // AWS_S3_BUCKET = 'learn-jenkins-123456'
-              AWS_DEFAULT_REGION = 'eu-west-1'
-              AWS_ECS_CLUSTER = 'learn-jenkins-app-cluster-prod'
-              AWS_ECS_SERVICE = 'LearnJenkinsApp-Service-Prod'
-              AWS_ECS_TASK_DEFINITION = 'LearnJenkinsApp-TaskDefinition-Prod'
-            }
-
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
-                    sh '''
-                      aws --version
-
-                      yum install jq -y
-                      LATEST_TD_REVISION=$(aws ecs register-task-definition --cli-input-json file://aws/task-definition-prod.json | jq '.taskDefinition.revision')
-                      echo $LATEST_TD_REVISION
-
-                      aws ecs register-task-definition --cli-input-json file://aws/task-definition-prod.json
-     
-                      aws ecs update-service --cluster $AWS_ECS_CLUSTER --service $AWS_ECS_SERVICE --task-definition $AWS_ECS_TASK_DEFINITION:$LATEST_TD_REVISION
-                      
-                      aws ecs wait services-stable --cluster $AWS_ECS_CLUSTER --services $AWS_ECS_SERVICE
-                    '''
-                }
-            }
-        }
-
         stage('Build') {
             agent {
                 docker {
@@ -64,6 +28,49 @@ pipeline {
                 '''
             }
         }
+
+        stage('Build Docker image') {
+            steps {
+                sh 'docker build -t myjenkinsapp .'
+            }
+        }
+
+        stage('Deploy to AWS') {
+            agent {
+                docker {
+                    image 'amazon/aws-cli'
+                    reuseNode true
+                    args "-u root --entrypoint=''"
+                }
+            }
+
+            environment {
+              // AWS_S3_BUCKET = 'learn-jenkins-123456'
+              AWS_DEFAULT_REGION = 'eu-west-1'
+              AWS_ECS_TASK_DEFINITION_FILE = 'aws/task-definition-prod.json'
+              AWS_ECS_CLUSTER = 'learn-jenkins-app-cluster-prod'
+              AWS_ECS_SERVICE = 'LearnJenkinsApp-Service-Prod'
+              AWS_ECS_TASK_DEFINITION = 'LearnJenkinsApp-TaskDefinition-Prod'
+            }
+
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                    sh '''
+                      aws --version
+
+                      yum install jq -y
+                      LATEST_TD_REVISION=$(aws ecs register-task-definition --cli-input-json file://$AWS_ECS_TASK_DEFINITION_FILE | jq '.taskDefinition.revision')
+
+                      aws ecs register-task-definition --cli-input-json file://$AWS_ECS_TASK_DEFINITION_FILE
+     
+                      aws ecs update-service --cluster $AWS_ECS_CLUSTER --service $AWS_ECS_SERVICE --task-definition $AWS_ECS_TASK_DEFINITION:$LATEST_TD_REVISION
+                      
+                      aws ecs wait services-stable --cluster $AWS_ECS_CLUSTER --services $AWS_ECS_SERVICE
+                    '''
+                }
+            }
+        }
+
 
 
       // stage ('Test') {
