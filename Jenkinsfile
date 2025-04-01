@@ -5,6 +5,7 @@ pipeline {
         // NETLIFY_SITE_ID = '301b95ca-3e2e-4469-8426-54dfd977273c'
         // NETLIFY_AUTH_TOKEN = credentials('netlify-token')
         REACT_APP_VERSION = "1.2.$BUILD_ID"
+        APP_NAME = "myjenkinsapp"
     }
 
 
@@ -40,7 +41,7 @@ pipeline {
 
             steps {
                 sh '''
-                  docker build -t myjenkinsapp .
+                  docker build -t $APP_NAME:$REACT_APP_VERSION .
                 '''
             }
         }
