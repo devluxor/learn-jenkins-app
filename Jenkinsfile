@@ -2,13 +2,38 @@ pipeline {
     agent any
 
     environment {
-        NETLIFY_SITE_ID = '301b95ca-3e2e-4469-8426-54dfd977273c'
-        NETLIFY_AUTH_TOKEN = credentials('netlify-token')
+        // NETLIFY_SITE_ID = '301b95ca-3e2e-4469-8426-54dfd977273c'
+        // NETLIFY_AUTH_TOKEN = credentials('netlify-token')
         REACT_APP_VERSION = "1.2.$BUILD_ID"
     }
 
 
     stages {
+
+        stage('Deploy to AWS') {
+            agent {
+                docker {
+                    image 'amazon/aws-cli'
+                    reuseNode true
+                    args "--entrypoint=''"
+                }
+            }
+
+            environment {
+              // AWS_S3_BUCKET = 'learn-jenkins-123456'
+              AWS_DEFAULT_REGION = 'eu-west-1'
+            }
+
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                    sh '''
+                      aws --version
+                      aws ecs register-task-definition file://aws/task-definition-prod.json
+                    '''
+                }
+            }
+        }
+
         stage('Build') {
             agent {
                 docker {
@@ -28,28 +53,6 @@ pipeline {
             }
         }
 
-        stage('AWS') {
-            agent {
-                docker {
-                    image 'amazon/aws-cli'
-                    reuseNode true
-                    args "--entrypoint=''"
-                }
-            }
-
-            environment {
-              AWS_S3_BUCKET = 'learn-jenkins-123456'
-            }
-
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-access-key', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
-                    sh '''
-                      aws --version
-                      aws s3 sync build s3://$AWS_S3_BUCKET
-                    '''
-                }
-            }
-        }
 
       // stage ('Test') {
       //   parallel {
@@ -123,55 +126,55 @@ pipeline {
       //       }
       //   }
 
-      stage('Deploy to staging + E2E Test') {
-          agent {
-              docker {
-                  // image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-                  image 'my-playwright'
-                  reuseNode true
-              }
-          }
+      // stage('Deploy to staging + E2E Test') {
+      //     agent {
+      //         docker {
+      //             // image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+      //             image 'my-playwright'
+      //             reuseNode true
+      //         }
+      //     }
 
-          environment {
-            CI_ENVIRONMENT_URL = 'STAGING_URL_TO_BE_SET'
-          }   
+      //     environment {
+      //       CI_ENVIRONMENT_URL = 'STAGING_URL_TO_BE_SET'
+      //     }   
 
-          steps {
-              sh '''
-                npm install netlify-cli node-jq
-                netlify --version
-                echo "Deploying to Netlify for staging... Site ID: $NETLIFY_SITE_ID"
-                netlify status
-                netlify deploy --dir=build --json > deploy-output.json
-                CI_ENVIRONMENT_URL=$(node-jq -r '.deploy_url' deploy-output.json)
+      //     steps {
+      //         sh '''
+      //           npm install netlify-cli node-jq
+      //           netlify --version
+      //           echo "Deploying to Netlify for staging... Site ID: $NETLIFY_SITE_ID"
+      //           netlify status
+      //           netlify deploy --dir=build --json > deploy-output.json
+      //           CI_ENVIRONMENT_URL=$(node-jq -r '.deploy_url' deploy-output.json)
                 
-                npx playwright test --reporter=html
-              '''
-          }
-          post {
-              always {
-                  publishHTML([
-                    allowMissing: false, 
-                    alwaysLinkToLastBuild: false, 
-                    icon: '', 
-                    keepAll: false, 
-                    reportDir: 'playwright-report', 
-                    reportFiles: 'index.html', 
-                    reportName: 'Playwright E2E Staging Report', 
-                    reportTitles: '', 
-                    useWrapperFileDirectly: true
-                  ])
-              }
-          }
-      }        
+      //           npx playwright test --reporter=html
+      //         '''
+      //     }
+      //     post {
+      //         always {
+      //             publishHTML([
+      //               allowMissing: false, 
+      //               alwaysLinkToLastBuild: false, 
+      //               icon: '', 
+      //               keepAll: false, 
+      //               reportDir: 'playwright-report', 
+      //               reportFiles: 'index.html', 
+      //               reportName: 'Playwright E2E Staging Report', 
+      //               reportTitles: '', 
+      //               useWrapperFileDirectly: true
+      //             ])
+      //         }
+      //     }
+      // }        
 
-        stage('Approval') {
-            steps {
-                timeout(time: 15, unit: 'MINUTES') {
-                    input message: 'Ready to deploy for production?', ok: 'Yes, I\'m ready'
-                }
-            }
-        }
+        // stage('Approval') {
+        //     steps {
+        //         timeout(time: 15, unit: 'MINUTES') {
+        //             input message: 'Ready to deploy for production?', ok: 'Yes, I\'m ready'
+        //         }
+        //     }
+        // }
 
       //  stage('Deploy production') {
       //       agent {
@@ -191,44 +194,44 @@ pipeline {
       //       }
       //   }
 
-      stage('Deploy to prod + E2E Test') {
-          agent {
-              docker {
-                  // image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-                  image 'my-playwright'
-                  reuseNode true
-              }
-          }
+      // stage('Deploy to prod + E2E Test') {
+      //     agent {
+      //         docker {
+      //             // image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+      //             image 'my-playwright'
+      //             reuseNode true
+      //         }
+      //     }
 
-          environment {
-            CI_ENVIRONMENT_URL = 'https://startling-rabanadas-2b55d4.netlify.app'
-          }   
+      //     environment {
+      //       CI_ENVIRONMENT_URL = 'https://startling-rabanadas-2b55d4.netlify.app'
+      //     }   
 
-          steps {
-              sh '''
-                netlify --version
-                echo "Deploying to Netlify for production... Site ID: $NETLIFY_SITE_ID"
-                netlify status
-                netlify deploy --dir=build --prod
+      //     steps {
+      //         sh '''
+      //           netlify --version
+      //           echo "Deploying to Netlify for production... Site ID: $NETLIFY_SITE_ID"
+      //           netlify status
+      //           netlify deploy --dir=build --prod
 
-                npx playwright test --reporter=html
-              '''
-          }
-          post {
-              always {
-                  publishHTML([
-                    allowMissing: false, 
-                    alwaysLinkToLastBuild: false, 
-                    icon: '', 
-                    keepAll: false, 
-                    reportDir: 'playwright-report', 
-                    reportFiles: 'index.html', 
-                    reportName: 'Playwright E2E Report', 
-                    reportTitles: '', 
-                    useWrapperFileDirectly: true
-                  ])
-              }
-          }
-      }
+      //           npx playwright test --reporter=html
+      //         '''
+      //     }
+      //     post {
+      //         always {
+      //             publishHTML([
+      //               allowMissing: false, 
+      //               alwaysLinkToLastBuild: false, 
+      //               icon: '', 
+      //               keepAll: false, 
+      //               reportDir: 'playwright-report', 
+      //               reportFiles: 'index.html', 
+      //               reportName: 'Playwright E2E Report', 
+      //               reportTitles: '', 
+      //               useWrapperFileDirectly: true
+      //             ])
+      //         }
+      //     }
+      // }
     }
 }
