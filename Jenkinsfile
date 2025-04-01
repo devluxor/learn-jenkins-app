@@ -7,6 +7,7 @@ pipeline {
         REACT_APP_VERSION = "1.2.$BUILD_ID"
         APP_NAME = "myjenkinsapp"
         AWS_DOCKER_REGISTRY = "054037114950.dkr.ecr.eu-west-1.amazonaws.com/myjenkinsapp"
+        AWS_DEFAULT_REGION = 'eu-west-1'
     }
 
 
@@ -71,7 +72,7 @@ pipeline {
 
             environment {
               // AWS_S3_BUCKET = 'learn-jenkins-123456'
-              AWS_DEFAULT_REGION = 'eu-west-1'
+
               AWS_ECS_TASK_DEFINITION_FILE = 'aws/task-definition-prod.json'
               AWS_ECS_CLUSTER = 'learn-jenkins-app-cluster-prod'
               AWS_ECS_SERVICE = 'LearnJenkinsApp-Service-Prod'
