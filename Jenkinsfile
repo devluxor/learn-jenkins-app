@@ -6,7 +6,7 @@ pipeline {
         // NETLIFY_AUTH_TOKEN = credentials('netlify-token')
         REACT_APP_VERSION = "1.2.$BUILD_ID"
         APP_NAME = "myjenkinsapp"
-        AWS_DOCKER_REGISTRY = "054037114950.dkr.ecr.eu-west-1.amazonaws.com/myjenkinsapp"
+        AWS_DOCKER_REGISTRY = "054037114950.dkr.ecr.eu-west-1.amazonaws.com"
         AWS_DEFAULT_REGION = 'eu-west-1'
     }
 
